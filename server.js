@@ -4,7 +4,7 @@ import axios from "axios";
 const app = express();
 const PORT = process.env.PORT || 3000;
 
-// Bộ nhớ cache để tránh gọi API quá nhiều lần
+// Bộ nhớ cache để tránh gọi API gốc quá nhiều lần
 let cache = {};
 let lastUpdated = 0;
 const CACHE_TTL = 5000; // làm mới mỗi 5 giây
@@ -23,6 +23,7 @@ async function fetchStockData(symbols) {
     const arr = symbols.split(",");
     const result = {};
 
+    // Gọi lần lượt từng mã
     for (const symbol of arr) {
         try {
             const url = `https://vn-stock-api-bsjj.onrender.com/api/stock/${symbol}/price`;
@@ -38,13 +39,23 @@ async function fetchStockData(symbols) {
     return result;
 }
 
-// Endpoint SSE (stream dữ liệu)
+// 🔹 Route kiểm tra trạng thái (Render/UptimeRobot health check)
+app.get("/", (req, res) => {
+    res.send("✅ SSE stock API is running");
+});
+
+// 🔹 Route health check (dành riêng cho monitor)
+app.get("/health", (req, res) => {
+    res.status(200).json({ status: "ok", uptime: process.uptime() });
+});
+
+// 🔸 Endpoint SSE (stream dữ liệu)
 app.get("/api/stock/stream", async (req, res) => {
     res.setHeader("Content-Type", "text/event-stream");
     res.setHeader("Cache-Control", "no-cache");
     res.setHeader("Connection", "keep-alive");
 
-    const symbols = req.query.symbols || "VNI";
+    const symbols = req.query.symbols || "ACB";
     console.log(`📡 Client subscribe symbols: ${symbols}`);
 
     // Gửi dữ liệu ban đầu
@@ -62,4 +73,5 @@ app.get("/api/stock/stream", async (req, res) => {
     });
 });
 
+// 🔹 Lắng nghe cổng
 app.listen(PORT, () => console.log(`✅ SSE server running on port ${PORT}`));

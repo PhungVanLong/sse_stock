@@ -4,52 +4,62 @@ import axios from "axios";
 const app = express();
 const PORT = process.env.PORT || 3000;
 
-// Cache tạm
-let cacheData = {};
-let lastFetchTime = 0;
-const CACHE_TTL = 5000; // 5 giây
+// Bộ nhớ cache để tránh gọi API quá nhiều lần
+let cache = {};
+let lastUpdated = 0;
+const CACHE_TTL = 5000; // làm mới mỗi 5 giây
 
-// Lấy dữ liệu từ API gốc
+// Hàm lấy dữ liệu nhiều mã cùng lúc
 async function fetchStockData(symbols) {
     const now = Date.now();
-    if (now - lastFetchTime < CACHE_TTL && cacheData[symbols]) {
-        return cacheData[symbols];
+
+    // Nếu cache còn hạn, trả lại dữ liệu cũ
+    if (now - lastUpdated < CACHE_TTL && cache[symbols]) {
+        console.log("🔁 Dùng lại cache");
+        return cache[symbols];
     }
 
-    try {
-        const results = {};
-        const arr = symbols.split(",");
-        for (const symbol of arr) {
+    console.log("🌐 Fetch mới từ API gốc...");
+    const arr = symbols.split(",");
+    const result = {};
+
+    for (const symbol of arr) {
+        try {
             const url = `https://vn-stock-api-bsjj.onrender.com/api/stock/${symbol}/price`;
             const res = await axios.get(url);
-            results[symbol] = res.data;
+            result[symbol] = res.data;
+        } catch (err) {
+            result[symbol] = { error: "Fetch failed" };
         }
-        cacheData[symbols] = results;
-        lastFetchTime = now;
-        return results;
-    } catch (err) {
-        console.error("Fetch failed:", err.message);
-        return {};
     }
+
+    cache[symbols] = result;
+    lastUpdated = now;
+    return result;
 }
 
-// SSE endpoint
+// Endpoint SSE (stream dữ liệu)
 app.get("/api/stock/stream", async (req, res) => {
     res.setHeader("Content-Type", "text/event-stream");
     res.setHeader("Cache-Control", "no-cache");
     res.setHeader("Connection", "keep-alive");
 
     const symbols = req.query.symbols || "VNI";
+    console.log(`📡 Client subscribe symbols: ${symbols}`);
 
+    // Gửi dữ liệu ban đầu
     const sendUpdate = async () => {
         const data = await fetchStockData(symbols);
-        res.write(`data: ${JSON.stringify({ updated: Date.now(), data })}\n\n`);
+        res.write(`data: ${JSON.stringify({ time: new Date(), data })}\n\n`);
     };
 
-    await sendUpdate(); // gửi ngay lần đầu
-    const interval = setInterval(sendUpdate, 5000); // update mỗi 5 giây
+    await sendUpdate();
+    const interval = setInterval(sendUpdate, 5000); // cập nhật mỗi 5s
 
-    req.on("close", () => clearInterval(interval));
+    req.on("close", () => {
+        clearInterval(interval);
+        console.log("❌ Client disconnected");
+    });
 });
 
-app.listen(PORT, () => console.log(`✅ Server running on port ${PORT}`));
+app.listen(PORT, () => console.log(`✅ SSE server running on port ${PORT}`));

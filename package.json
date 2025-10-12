@@ -1,0 +1,14 @@
+{
+  "name": "stock-sse",
+  "version": "1.0.0",
+  "description": "Stock Realtime Stream Server with Node.js and SSE",
+  "main": "server.js",
+  "type": "module",
+  "scripts": {
+    "start": "node server.js"
+  },
+  "dependencies": {
+    "express": "^4.19.2",
+    "axios": "^1.7.2"
+  }
+}

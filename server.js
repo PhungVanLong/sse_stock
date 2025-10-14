@@ -72,7 +72,7 @@ app.get('/stream-prices', (req, res) => {
         if (!res.writableEnded) {
             res.write(`data: ${JSON.stringify(priceData)}\n\n`);
         }
-    }, 3000); // Cập nhật mỗi 5 giây
+    }, 5000); // Cập nhật mỗi 5 giây
 
     // Xử lý khi client ngắt kết nối
     req.on('close', () => {

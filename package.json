@@ -1,14 +1,15 @@
 {
-  "name": "stock-sse",
+  "name": "node_sse",
   "version": "1.0.0",
-  "description": "Stock Realtime Stream Server with Node.js and SSE",
+  "description": "SSE server for stock prices",
   "main": "server.js",
   "type": "module",
   "scripts": {
     "start": "node server.js"
   },
   "dependencies": {
+    "cors": "^2.8.5",
     "express": "^4.19.2",
-    "axios": "^1.7.2"
+    "node-fetch": "^3.3.2"
   }
 }
